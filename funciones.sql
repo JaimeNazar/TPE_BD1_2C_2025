@@ -166,7 +166,7 @@ CREATE OR REPLACE FUNCTION consolidar_cliente(email suscripcion.cliente_email%TY
 RETURNS VOID AS $$
 DECLARE
     -- Variables para recorrer los datos (el cursor implícito)
-    r suscripcion%ROWTYPE;
+    r RECORD;
     
     periodo_num INTEGER := 1;
     periodo_inicio DATE; 
@@ -261,3 +261,4 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
+
