@@ -19,4 +19,4 @@ CREATE TABLE pago (
 );
 
 
---trigger
+
