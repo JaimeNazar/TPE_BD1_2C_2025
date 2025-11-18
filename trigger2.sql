@@ -14,7 +14,7 @@ DECLARE
     v_fecha_limite   DATE;
     v_tipo           VARCHAR(20);  -- 'nueva' o 'renovacion'
 BEGIN
-    -- 1) Buscar última suscripción del cliente
+    -- 1) Buscar última suscripción del cliente (me parece que con ORDER BY y LIMIT 1 es suficiente. que tal?)
     SELECT *
     INTO v_last_sub
     FROM suscripcion
