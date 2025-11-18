@@ -29,13 +29,13 @@ BEGIN
     v_fecha_limite := v_last_sub.fecha_fin - INTERVAL '30 days';
 
     -- Caso A: Pago demasiado anticipado
-    IF fecha_pago < v_fecha_limite THEN
+    IF fecha_pago < v_fecha_limite AND fecha_pago >= v_last_sub.fecha_inicio THEN
         RAISE EXCEPTION 'Pago demasiado anticipado para renovar. Solo se permite dentro de los 30 días previos al vencimiento. (pago=%, fin_anterior=%)', 
             fecha_pago, v_last_sub.fecha_fin;
     END IF;
 
     -- Caso B: ¿Renovación o nueva?
-    IF fecha_pago <= v_last_sub.fecha_fin THEN
+    IF fecha_pago <= v_last_sub.fecha_fin AND fecha_pago >= v_last_sub.fecha_inicio THEN
         -- Renovación
         RETURN FALSE;
     ELSE
@@ -68,7 +68,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION insert_suscripcion()
 RETURNS TRIGGER AS $$
 DECLARE
-    v_last_sub       suscripcion%ROWTYPE;
+    v_last_sub_fin   suscripcion.fecha_fin%TYPE;
     v_new_id         suscripcion.id%TYPE;
     v_new_inicio     suscripcion.fecha_inicio%TYPE;
     v_new_fin        suscripcion.fecha_fin%TYPE;
@@ -89,9 +89,16 @@ BEGIN
         END IF;
 
     ELSE
+        SELECT fecha_fin
+        INTO v_last_sub_fin
+        FROM suscripcion
+        WHERE cliente_email = NEW.cliente_email
+        ORDER BY fecha_fin DESC
+        LIMIT 1; --para que tome una sola 
+    
         -- Renovación
         v_tipo := 'renovacion';
-        v_new_inicio := v_last_sub.fecha_fin + INTERVAL '1 day';
+        v_new_inicio := v_last_sub_fin + INTERVAL '1 day';
 
         -- B3: calcular fecha_fin
         IF NEW.modalidad = 'mensual' THEN
