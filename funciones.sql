@@ -162,11 +162,11 @@ FOR EACH ROW --una vez por cada fila insertada
 EXECUTE PROCEDURE insert_suscripcion();
 
 -- Funcion que devuelve informacion de cliente
-CREATE OR REPLACE FUNCTION consolidar_cliente(email VARCHAR) 
+CREATE OR REPLACE FUNCTION consolidar_cliente(email suscripcion.cliente_email%TYPE) 
 RETURNS VOID AS $$
 DECLARE
     -- Variables para recorrer los datos (el cursor implícito)
-    r RECORD;
+    r suscripcion%ROWTYPE;
     
     periodo_num INTEGER := 1;
     periodo_inicio DATE; 
