@@ -212,11 +212,11 @@ BEGIN
         -- Verificar que no haya un hueco entre sus subscripciones, si lo hay, cerrar periodo
         IF (NOT primera_vez) AND (r.fecha_inicio > (ultimo_fin + INTERVAL '1 day')) THEN
             
-            RAISE NOTICE '(Fin del periodo #%: % a %) | Total periodo: % %', 
+            RAISE NOTICE '    (Fin del periodo #%: % a %) | Total periodo: % %', 
              periodo_num, periodo_inicio, ultimo_fin,
              meses_periodo, CASE WHEN meses_periodo = 1 THEN 'mes' ELSE 'meses' END;
             
-            RAISE NOTICE 'PERIODO DE BAJA';
+            RAISE NOTICE '--- PERIODO DE BAJA ---';
             
             -- Resetear variables para el proximo periodo
             periodo_num := periodo_num + 1;
@@ -233,7 +233,7 @@ BEGIN
         END IF;
 
         -- Imprimir detalle de la subscripcion
-        RAISE NOTICE '% % | pago=% medio=% | cobertura=% a %',
+        RAISE NOTICE '    % % | pago=% medio=% | cobertura=% a %',
                      UPPER(r.tipo), 
                      texto_modalidad,
                      r.fecha_pago, 
@@ -253,7 +253,7 @@ BEGIN
     END LOOP;
 
     -- Terminar el ultimo periodo y mostrar total acumulado
-    RAISE NOTICE '(Fin del periodo #%: % a %) | Total periodo: % %', 
+    RAISE NOTICE '    (Fin del periodo #%: % a %) | Total periodo: % %', 
              periodo_num, periodo_inicio, ultimo_fin,
              meses_periodo, CASE WHEN meses_periodo = 1 THEN 'mes' ELSE 'meses' END;
 
