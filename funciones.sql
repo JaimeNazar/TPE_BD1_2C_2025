@@ -30,6 +30,7 @@ DROP TRIGGER IF EXISTS insertPagoTrigger ON pago;
 DROP FUNCTION IF EXISTS nueva_suscripcion;
 DROP FUNCTION IF EXISTS superposicion_suscripcion;
 DROP FUNCTION IF EXISTS insert_suscripcion;
+DROP FUNCTION IF EXISTS imprimir_final_periodo;
 DROP FUNCTION IF EXISTS consolidar_cliente;
 
 -- Funcion auxiliar de validacion de tipo suscripcion, lanza excepcion en caso de que sea invalida
@@ -161,11 +162,21 @@ INSERT ON pago
 FOR EACH ROW --una vez por cada fila insertada
 EXECUTE PROCEDURE insert_suscripcion();
 
+-- Funcion auxiliar para imprimir el final del periodo
+CREATE OR REPLACE FUNCTION imprimir_final_periodo(periodo_num INTEGER, periodo_inicio DATE, ultimo_fin DATE, meses_periodo INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    RAISE NOTICE '    (Fin del periodo #%: % a %) | Total periodo: % %', 
+             periodo_num, periodo_inicio, ultimo_fin,
+             meses_periodo, CASE WHEN meses_periodo = 1 THEN 'mes' ELSE 'meses' END;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Funcion que devuelve informacion de cliente
 CREATE OR REPLACE FUNCTION consolidar_cliente(email suscripcion.cliente_email%TYPE) 
 RETURNS VOID AS $$
 DECLARE
-    -- Variables para recorrer los datos (el cursor implícito)
+    -- Variables
     r RECORD;
     
     periodo_num INTEGER := 1;
@@ -190,10 +201,9 @@ BEGIN
     RAISE NOTICE '== Cliente: % ==', email;
     RAISE NOTICE 'Periodo #%', periodo_num;
 
-    -- Recorrer todas las los pagos y subscripciones del cliente
+    -- Recorrer todas las los pagos y suscripciones del cliente
     FOR r IN 
-        SELECT s.id, s.tipo, s.modalidad, s.fecha_inicio, s.fecha_fin,
-               p.fecha AS fecha_pago, p.medio_pago
+        SELECT s.id, s.tipo, s.modalidad, s.fecha_inicio, s.fecha_fin, p.fecha AS fecha_pago, p.medio_pago
         FROM suscripcion s
         JOIN pago p ON s.id = p.suscripcion_id
         WHERE s.cliente_email = email
@@ -209,13 +219,10 @@ BEGIN
             texto_modalidad := 'ANUAL (12 meses)';
         END IF;
 
-        -- Verificar que no haya un hueco entre sus subscripciones, si lo hay, cerrar periodo
+        -- Verificar que no haya un hueco entre suscripciones, si lo hay, cerrar periodo
         IF (NOT primera_vez) AND (r.fecha_inicio > (ultimo_fin + INTERVAL '1 day')) THEN
             
-            RAISE NOTICE '    (Fin del periodo #%: % a %) | Total periodo: % %', 
-             periodo_num, periodo_inicio, ultimo_fin,
-             meses_periodo, CASE WHEN meses_periodo = 1 THEN 'mes' ELSE 'meses' END;
-            
+            PERFORM imprimir_final_periodo(periodo_num, periodo_inicio, ultimo_fin, meses_periodo);
             RAISE NOTICE '--- PERIODO DE BAJA ---';
             
             -- Resetear variables para el proximo periodo
@@ -232,19 +239,13 @@ BEGIN
             primera_vez := FALSE;
         END IF;
 
-        -- Imprimir detalle de la subscripcion
-        RAISE NOTICE '    % % | pago=% medio=% | cobertura=% a %',
-                     UPPER(r.tipo), 
-                     texto_modalidad,
-                     r.fecha_pago, 
-                     r.medio_pago,
-                     r.fecha_inicio, 
-                     r.fecha_fin;
+        -- Imprimir detalle de la suscripcion
+        RAISE NOTICE '    % % | pago=% medio=% | cobertura=% a %', UPPER(r.tipo), texto_modalidad, r.fecha_pago, r.medio_pago, r.fecha_inicio, r.fecha_fin;
 
         meses_periodo := meses_periodo + meses_actual;
         meses_total := meses_total + meses_actual;
         
-        -- Guardar ultimo fin de subscripcion
+        -- Guardar ultimo fin de suscripcion
         IF ultimo_fin IS NULL OR r.fecha_fin > ultimo_fin THEN
             periodo_fin := r.fecha_fin;
             ultimo_fin := r.fecha_fin;
@@ -253,9 +254,7 @@ BEGIN
     END LOOP;
 
     -- Terminar el ultimo periodo y mostrar total acumulado
-    RAISE NOTICE '    (Fin del periodo #%: % a %) | Total periodo: % %', 
-             periodo_num, periodo_inicio, ultimo_fin,
-             meses_periodo, CASE WHEN meses_periodo = 1 THEN 'mes' ELSE 'meses' END;
+    PERFORM imprimir_final_periodo(periodo_num, periodo_inicio, ultimo_fin, meses_periodo);
 
     RAISE NOTICE '== Total acumulado: % % ==', meses_total, CASE WHEN meses_total = 1 THEN 'mes' ELSE 'meses' END;
 
